@@ -1,0 +1,4 @@
+spacy>=2.3.5,<3.0.0
+sqlite3
+aiohttp
+https://github.com/explosion/spacy-models/releases/download/de_core_news_md-2.3.0/de_core_news_md-2.3.0.tar.gz#egg=de_core_news_md
