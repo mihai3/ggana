@@ -46,8 +46,11 @@ gendered_rev = {
     "bei dem": "beim"
 }
 
-immobile_verbs = "sitze,sitzen,sein,stehen,hängen,bleiben,verweilen,liegen,finden,herstellen,erzeugen,machen,singen,tanzen".split(",")
+immobile_verbs = "sitzen,sitzen,sein,stehen,hängen,bleiben,verweilen,liegen,finden,herstellen,erzeugen,machen,singen,tanzen".split(",")
 mobile_verbs = "gehen,fahren,fliegen,müssen,sollen,können,bewegen,schieben,ziehen,schicken,senden,transportieren".split(",")
+
+immobile_verbs += [i[:-1] for i in immobile_verbs] # lemmatizer sometimes generates the word with "e"
+mobile_verbs += [i[:-1] for i in mobile_verbs] # lemmatizer sometimes generates the word with "e"
 
 for k,v in gendered_prepositions.items():
     vp, vg = v.split(" ")
@@ -138,7 +141,7 @@ def get_valid_decs(token, modified_tokens): # should be a noun token
             while root.head is not None and root != root.head:
                 root = root.head
                 logging.info("searching for head %s", root)
-                if root.pos_ == "VERB":
+                if root.pos_ == "VERB" or root.pos_ == "AUX":
                     break
             logging.info("found root token %s lemma %s", root, root.lemma_)
             
@@ -214,7 +217,7 @@ def get_sentence_and_doc(text, fmt="{}"):
 
     for token in doc:
         logging.info("%s [pos:]%s [dep:]%s [parent]%s", token.text, token.pos_, token.dep_, token.head.text)
-        if token.pos_ == "NOUN" and dec.lemmatize(token.text) is not None:
+        if token.pos_ in ("NOUN", "PROPN") and dec.lemmatize(token.text) is not None:
             valid_decs = get_valid_decs(token, modified_tokens)
 
             # check dependents if they follow the correct declension
@@ -228,7 +231,7 @@ def get_sentence_and_doc(text, fmt="{}"):
                     break
 
             for d in token.children:
-                if d.pos_ == "NOUN":
+                if d.pos_ in ("NOUN", "PROPN"):
                     continue # skip nouns, they will be processed linearly
                 
                 if any(dd.text in "\"'" for dd in d.children):
@@ -260,7 +263,7 @@ def get_sentence_and_doc(text, fmt="{}"):
                         modified_tokens[tid(child)] = corr_d
                     continue
 
-                if child.pos_ in ("NOUN", "VERB", "AUX") or child.dep_ == "sb":
+                if child.pos_ in ("NOUN", "PROPN", "VERB", "AUX") or child.dep_ == "sb":
                     continue # skip nouns / verbs / subjects (=other sentences), they will be processed linearly
 
                 if any(d.text in "\"'" for d in child.children):

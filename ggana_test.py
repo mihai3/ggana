@@ -84,5 +84,8 @@ class GganaTest(unittest.TestCase):
     def test_sitzen(self):
         self.compare("ich sitze unter ein Baum|ich sitze unter einem Baum")
 
+    def test_propn(self):
+        self.compare("ich fahre in der türkei|ich fahre in die Türkei")
+
 if __name__ == "__main__":
     unittest.main()
