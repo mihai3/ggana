@@ -87,5 +87,14 @@ class GganaTest(unittest.TestCase):
     def test_propn(self):
         self.compare("ich fahre in der türkei|ich fahre in die Türkei")
 
+    def test_adj_pl(self):
+        self.compare("das sind meine besten Getränke")
+
+    def test_web_examples(self):
+        self.compare("Ich habe ein Baum in meine Garten|Ich habe einen Baum in meinem Garten")
+        self.compare("Ich liege auf meine Terasse|Ich liege auf meiner Terasse")
+        self.compare("Diese kleinen Katze hat ein schönen grauen Fell|Diese kleine Katze hat ein schönes graues Fell")
+        self.compare("GGANA überprüft und korrigiert automatisch das Genus bekannter Nomen, ebenso wie einige Fallfehler.")
+
 if __name__ == "__main__":
     unittest.main()

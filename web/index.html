@@ -1,0 +1,100 @@
+<html lang="de">
+<head>
+<title>GGANA - Großartiger grammatikalischer Artikel-Neu-Auswerter</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width: device-width;">
+<style type="text/css">
+@font-face {
+  font-family: Montserrat;
+  src: local(Montserrat), url('fonts/Montserrat-Regular.ttf');
+}
+
+@font-face {
+  font-family: Montserrat;
+  font-weight: bold;
+  src: local(Montserrat), url('fonts/Montserrat-Bold.ttf');
+}
+
+html { margin: 0; padding: 0; font-size: 16px; }
+body, input { font-family: "Montserrat"; }
+body { padding-top: 20px; text-align: center; max-width: 36em; margin: 0 auto; padding: 20px; }
+.subtitle { font-weight: normal; text-align: center; font-size: 14px; margin: 0; padding: 0.5em; }
+h1 { font-weight: normal; text-align: center; font-size: 60px; margin: 0; padding: 20px; }
+#logo { width: 110px; height: 82px; margin: 10px auto; display: block; }
+#sentence {
+  border: 1px solid #444; padding: 20px; margin: 10px auto;
+  text-align: left; min-height: 30px; font-size: 20px;
+  border-radius: 30px;
+  min-width: 32em;
+}
+#sentence::placeholder { color: #999; opacity: 1; }
+#sentence::-ms-input-placeholder { color: #999; }
+#answer { font-size: 20px; margin-bottom: 2em; }
+h2 { font-weight: normal; text-align: left; font-size: 24px; margin: 0; padding: 5px; }
+ul { text-align: left; font-size: 18px; }
+ul li { margin: 5px; }
+.wrong { color: #800; }
+footer { padding-top: 20px; text-align: justify; color: #444; font-size: 12px; }
+footer a { text-decoration: none; font-weight: normal; color: #000; }
+.example { cursor: pointer; }
+.example::after { content: ' ›'; color: #444; }
+</style>
+</head>
+<body>
+<h1>GGANA
+  <img id="logo" src="logo.svg" alt="">
+</h1>
+<div class="subtitle">Großartiger grammatikalischer Artikel-Neu-Auswerter</div>
+<form id="form">
+  <input type="text" placeholder="Gib deinen Satz hier ein" id="sentence">
+</form>
+<div id="answer"></div>
+<h2>Beispiele</h2>
+<ul>
+  <li class="example">Ich habe <span class="wrong">ein</span> Baum in <span class="wrong">meine</span> Garten.</li>
+  <li class="example">Ich liege auf <span class="wrong">meine</span> Terasse.</li>
+  <li class="example">Diese <span class="wrong">kleinen</span> Katze hat ein <span class="wrong">schönen</span> <span class="wrong">grauen</span> Fell.</li>
+  <li class="example"><span class="wrong">das</span> Heizkörper</li>
+</ul>
+<h2>Was ist das (nicht)?</h2>
+<ul>
+  <li>GGANA überprüft automatisch das Genus bekannter Nomen und versucht dazugehörige Artikel und Adjektive darauf anzupassen.</li>
+  <li>Es werden insbesondere weder Tippfehler oder Ortographie korrigiert, noch Verben, Pronomen, Konjunktionen usw. geprüft. Die Erkennung des anzuwendenden Falles ist nicht immer verlässlich.</li>
+  <li>Das Tool ist nur ein Proof-of-concept und kann in einigen Fällen <u>fehlerhafte Ergebnisse</u> liefern!</li>
+</ul>
+<footer>
+  Datenquellen:<br>
+  &copy; <a href="https://www.korrekturen.de/flexion/projekt.shtml">Flexion tool by korrekturen.de</a>, <a href="https://morphy.wolfganglezius.de">Morphy</a> CC-BY-SA 4.0,<br>
+  &copy; 2016-2020 ExplosionAI GmbH, 2016 spaCy GmbH, 2015 Matthew Honnibal (<a href="https://spacy.io">spaCy</a>).<br>
+  <br>
+  GitHub-Projekt: <a href="https://github.com/mihai3/ggana">mihai3/ggana</a>
+</footer>
+<script type="text/javascript">
+  // @license magnet:?xt=urn:btih:1f739d935676111cfff4b4693e3816e664797050&dn=gpl-3.0.txt GPL-v3-or-Later
+  var sentence = document.getElementById("sentence");
+  var form = document.getElementById("form"); 
+  form.onsubmit = (e) => {
+    fetch("/ggana/api?mode=html", {
+          method: "POST",
+          headers: { "Content-type": "text/plain" },
+          body: sentence.value
+        }
+      ).then(response => response.json()).then(data => {
+        answer.innerHTML = data.result;
+        sentence.focus();
+      }).catch(e => {
+        answer.innerHTML = "Fehler!";
+        console.log(e);
+      });
+
+      if (e) e.preventDefault();
+  };
+
+  for (let d of document.getElementsByClassName("example"))
+    d.onclick = function(e) {
+      sentence.value = this.innerText;
+      form.onsubmit(); // uhh..
+    };
+  
+  // @license-end
+</script>

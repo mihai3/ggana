@@ -5,6 +5,7 @@ import declension
 import logging
 import re
 from aiohttp import web
+import html
 import json
 import argparse
 
@@ -46,7 +47,7 @@ gendered_rev = {
     "bei dem": "beim"
 }
 
-immobile_verbs = "sitzen,sitzen,sein,stehen,hängen,bleiben,verweilen,liegen,finden,herstellen,erzeugen,machen,singen,tanzen".split(",")
+immobile_verbs = "sitzen,sitzen,sein,stehen,hängen,bleiben,verweilen,liegen,finden,herstellen,erzeugen,machen,singen,tanzen,haben".split(",")
 mobile_verbs = "gehen,fahren,fliegen,müssen,sollen,können,bewegen,schieben,ziehen,schicken,senden,transportieren".split(",")
 
 immobile_verbs += [i[:-1] for i in immobile_verbs] # lemmatizer sometimes generates the word with "e"
@@ -58,7 +59,7 @@ for k,v in gendered_prepositions.items():
     if vp in prepositions[vcase]:
         prepositions[vcase].append(k)
 
-def get_corrected_dependent(word, pos, valid_decs, definite=False):
+def get_corrected_dependent(word, pos, valid_decs, mode=declension.Mode.OTHER):
     """
     returns (corrected dependent, list of matches)
     """
@@ -76,13 +77,13 @@ def get_corrected_dependent(word, pos, valid_decs, definite=False):
             if res:
                 return res.word, [res]
     elif pos == "ADJ":
-        matching_valid_tuples = list(d for d in declension.all_adjs(word, definite=definite) if d.word == word and (d.case, d.is_plural, d.gender) in valid_dec_tuples)
+        matching_valid_tuples = list(d for d in declension.all_adjs(word, mode=mode) if d.word == word and (d.case, d.is_plural, d.gender) in valid_dec_tuples)
 
         if matching_valid_tuples:
             return word, matching_valid_tuples
         else:
-            res = declension.best_adj(valid_decs, like=word, definite=definite)
-            logging.info("found best replacement for adj %s in %s: %s (definite %s)", word, valid_decs, res, definite)
+            res = declension.best_adj(valid_decs, like=word, mode=mode)
+            logging.info("found best replacement for adj %s in %s: %s (mode %s)", word, valid_decs, res, mode)
             if res:
                 return res.word, [res]
 
@@ -193,8 +194,10 @@ def get_valid_decs(token, modified_tokens): # should be a noun token
     # it gets even more experimental with these...
     if token.dep_ == "da":
         new_valid_decs = [v for v in valid_decs if v.case == "DAT"]
-    if token.dep_ == "go":
+    if token.dep_ in ["go", "ag", "pg"]:
         new_valid_decs = [v for v in valid_decs if v.case == "GEN"]
+    if token.dep_ == "oa":
+        new_valid_decs = [v for v in valid_decs if v.case == "AKK"]
 
     if new_valid_decs:
         valid_decs = new_valid_decs
@@ -221,13 +224,13 @@ def get_sentence_and_doc(text, fmt="{}"):
             valid_decs = get_valid_decs(token, modified_tokens)
 
             # check dependents if they follow the correct declension
-            has_definite = False
+            mode = declension.Mode.OTHER
             worklist = []
 
-            # first scan if we need to go into definite mode
+            # first scan if we need to go into a special mode
             for d in token.children:
-                if d.text.lower() in declension.DEFINITES:
-                    has_definite = True
+                if (child_mode := declension.get_mode(d.text.lower())) is not None:
+                    mode = child_mode
                     break
 
             for d in token.children:
@@ -241,7 +244,7 @@ def get_sentence_and_doc(text, fmt="{}"):
                 if d.text.lower() == "paar": # TODO this should be parsed on its own similar to a noun even though it's a DET, for now we just don't correct it..
                     continue
 
-                corr_d, matches = get_corrected_dependent(d.text, d.pos_, valid_decs, definite=has_definite)
+                corr_d, matches = get_corrected_dependent(d.text, d.pos_, valid_decs, mode=mode)
                 if corr_d != d.text:
                     modified_tokens[tid(d)] = corr_d
                 valid_decs = declension.filter_decs(valid_decs, matches)
@@ -258,7 +261,7 @@ def get_sentence_and_doc(text, fmt="{}"):
                     pronoun_decs = [dec for dec in dec.get_all(token.text) if dec.case == "NOM" and dec.is_plural in set(vd.is_plural for vd in valid_decs)]
                     
                     # TODO apply matches from get_corrected_dependent here too
-                    corr_d, _ = get_corrected_dependent(child.text, "DET", pronoun_decs, definite=has_definite)
+                    corr_d, _ = get_corrected_dependent(child.text, "DET", pronoun_decs, mode=mode)
                     if corr_d != child.text:
                         modified_tokens[tid(child)] = corr_d
                     continue
@@ -272,7 +275,7 @@ def get_sentence_and_doc(text, fmt="{}"):
                 worklist += child.children
 
                 # TODO apply matches from get_corrected_dependent here too
-                corr_d, _ = get_corrected_dependent(child.text, child.pos_, valid_decs, definite=has_definite)
+                corr_d, _ = get_corrected_dependent(child.text, child.pos_, valid_decs, mode=mode)
                 if corr_d != child.text:
                     modified_tokens[tid(child)] = corr_d
             # worklist done
@@ -286,13 +289,19 @@ def get_sentence_and_doc(text, fmt="{}"):
     fixed_sentence = ""
 
     # TODO perform contraction on the modifications only
-        
+    
+    first_letter_was_capitalized = text.strip() and text.strip()[0] == text.strip()[0].upper()
+
     for token in doc:
         # token.i == 0 or
         # if (token.pos_ == "PROPN") and token.text != proper_capitalize(token.text): # some last minute quick fixes
         #    modified_tokens[tid(token)] = proper_capitalize(token.text)
 
-        fixed_sentence += fmt.format(modified_tokens[tid(token)]) if tid(token) in modified_tokens else token.text
+        new_modified_token = modified_tokens[tid(token)] if tid(token) in modified_tokens else None
+        if token.i == 0 and first_letter_was_capitalized and new_modified_token is not None:
+            new_modified_token = proper_capitalize(new_modified_token)
+
+        fixed_sentence += fmt.format(new_modified_token) if new_modified_token is not None else token.text
         if token.text_with_ws != token.text:
             fixed_sentence += " "
 
@@ -313,11 +322,14 @@ def main(args=None):
 def server(host="localhost", port=7314):
     async def sentence_request(request):
         fmt = "{}"
-        if "mode" in request.query:
-            if request.query["mode"] == "irc":
-                fmt = "\002{}\002"
-            elif request.query["mode"] == "text":
-                fmt = "*{}*"
+        mode =  request.query["mode"] if "mode" in request.query else "plain"
+        
+        if mode == "irc":
+            fmt = "\002{}\002"
+        elif mode == "text":
+            fmt = "*{}*"
+        elif mode == "html":
+            fmt = "§§§§{}§§#§"
             
         if request.method == "GET":
             text = request.query["text"]
@@ -326,6 +338,10 @@ def server(host="localhost", port=7314):
 
         ret = get_sentence(text, fmt=fmt)
         ret_for_change = get_sentence(text)
+
+        if mode == "html":
+            ret = html.escape(ret)
+            ret = ret.replace("§§§§", "<b>").replace("§§#§", "</b>") # ugly but pragmatic?
 
         format = "json"
         if "format" in request.query and request.query["format"] in ["plain"]:
@@ -336,7 +352,7 @@ def server(host="localhost", port=7314):
         elif format == "json":
             return web.Response(body=json.dumps({
                 "result": ret, "changed":(ret_for_change.lower() != text.lower())
-            }, indent=2), content_type="application/json")
+            }, indent=2), content_type="application/json", headers={"Access-Control-Allow-Origin": "*"})
 
     # configure webserver
     app = web.Application()

@@ -1,17 +1,21 @@
 # GGANA
 
-_Großartiger grammatikalischer Artikel Neu-Auswerter_
+_Großartiger grammatikalischer Artikel-Neu-Auswerter_
 
 This tool attempts to correct some of the more common mistakes concerning the use of nouns in German.
 In particular, it attempts to determine the gender of each used noun and to ensure that the correct article,
 as well as correctly declinated adjectives and other determinants are used.
 
-The mainly relies on prepositions as well as on some of the more robust hints from spaCy's dependency parser (like the
+The analysis mainly relies on prepositions as well as on some of the more robust hints from spaCy's dependency parser (like the
 use of a noun as a subject or in a predicate).
 
-**Note**: This tool doesn't attempt to correct any other mistakes (like misspelled words, wrong use of verbs and pronouns).
+**Note**: This tool doesn't attempt to correct any other mistakes (like misspelled words, wrong use of verbs and pronouns). It also doesn't reliably detect the case of nouns.
 
 Due to the complex nature of languages, please only expect it to work some (hopefully most) of the time. This is just a slightly more pragmatic proof-of-concept.
+
+## Live demo
+
+Available at: https://mihai3.com/ggana/
 
 ## Installation and usage
 
@@ -42,6 +46,7 @@ You can then make GET or POST requests to the root endpoint as follows:
 * The query parameter `mode` will determine how ćhanges in the result are highlighted:
   * `text` to wrap them in \*asterisks\*
   * `irc` to wrap them in "bold" control codes for IRC (ASCII 0x02)
+  * `html` to wrap them in `<b></b>` (and also escape other HTML characters in the result)
   * `plain` (or not specified) to do nothing
 * In GET mode: specify the text using the `text` query parameter.
 * In POST mode: post the plain text as the HTTP request body.

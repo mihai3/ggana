@@ -48,14 +48,14 @@ def xchat_ggana_cb(word, word_eol, userdata):
             # fix sentence
             success = output_fixed(param)
             if not success:
-                xchat.command("say \002\002"+param+" "+u"\u2714".encode("utf-8"))
+                xchat.command("say "+u"\u2714".encode("utf-8"))
         else:
             # try stuff from history
             for line in reversed(ggana_history):
                 success = output_fixed(line)
                 if success: break
             else:
-                xchat.command("say Nichts gefunden!")
+                xchat.command("notice "+nick+" nix!")
         return xchat.EAT_PLUGIN
 
     elif not text.startswith("!"):
