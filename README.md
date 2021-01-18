@@ -66,7 +66,7 @@ curl -H"Content-type: text/plain" -d"Ich sitze unter ein Baum." "http://localhos
 
 ```json
 {
-  "result": "Ich sitze unter *einen* Baum.",
+  "result": "Ich sitze unter *einem* Baum.",
   "changed": true
 }
 ```
